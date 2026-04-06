@@ -1,0 +1,185 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id       Int    @id @default(autoincrement())
+  email    String @unique
+  password String
+}
+
+model applicant_positions {
+  id           String                       @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  applicant_id String                       @db.Char(36)
+  position_id  String                       @db.Char(36)
+  priority     applicant_positions_priority
+  applicants   applicants                   @relation(fields: [applicant_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "applicant_positions_ibfk_1")
+  positions    positions                    @relation(fields: [position_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "applicant_positions_ibfk_2")
+
+  @@unique([applicant_id, position_id], map: "unq_app_position")
+  @@unique([applicant_id, priority], map: "unq_app_priority")
+  @@index([applicant_id], map: "idx_app_pos")
+  @@index([position_id], map: "position_id")
+}
+
+model applicant_skills {
+  id           String     @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  applicant_id String     @db.Char(36)
+  skill_id     String     @db.Char(36)
+  applicants   applicants @relation(fields: [applicant_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "applicant_skills_ibfk_1")
+  skills       skills     @relation(fields: [skill_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "applicant_skills_ibfk_2")
+
+  @@index([applicant_id], map: "idx_app_skill")
+  @@index([skill_id], map: "skill_id")
+}
+
+model applicant_vacancies {
+  id           String     @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  applicant_id String     @db.Char(36)
+  vacancy_id   String     @db.Char(36)
+  applicants   applicants @relation(fields: [applicant_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "applicant_vacancies_ibfk_1")
+  vacancies    vacancies  @relation(fields: [vacancy_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_vac_ref")
+ 
+  @@index([applicant_id], map: "applicant_id")
+  @@index([vacancy_id], map: "idx_vac_id")
+}
+
+model applicants {
+  id                        String                         @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  first_name                String                         @db.VarChar(100)
+  last_name                 String                         @db.VarChar(100)
+  gender                    applicants_gender?
+  email                     String?                        @unique(map: "email") @db.VarChar(150)
+  phone                     String                         @db.VarChar(30)
+  address                   String?                        @db.Text
+  country                   String?                        @db.VarChar(100)
+  city                      String?                        @db.VarChar(100)
+  application_status        applicants_application_status? @default(submitted)
+  cv_file_path              String?                        @db.VarChar(500)
+  skills_description         String?                        @db.Text
+  ip_address                String?                        @db.VarChar(45)
+  user_agent                String?                        @db.Text
+  created_by                String?                        @default("system") @db.VarChar(100)
+  updated_by                String?                        @default("system") @db.VarChar(100)
+  created_at                DateTime?                      @default(now()) @db.Timestamp(0)
+  updated_at                DateTime?                      @default(now()) @db.Timestamp(0)
+  applicant_positions       applicant_positions[]
+  applicant_skills          applicant_skills[]
+  applicant_vacancies       applicant_vacancies[]
+  educations                educations[]
+  experiences               experiences[]
+  general_applicant_answers general_applicant_answers[]
+
+  @@index([first_name, last_name], map: "idx_names")
+}
+
+model audit_logs {
+  id           String                 @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  action_type  audit_logs_action_type
+  table_name   String                 @db.VarChar(50)
+  record_id    String                 @db.Char(36)
+  performed_by String?                @default("system") @db.VarChar(100)
+  created_at   DateTime?              @default(now()) @db.Timestamp(0)
+}
+
+model educations {
+  id              String     @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  applicant_id    String     @db.Char(36)
+  institution     String?    @db.VarChar(150)
+  education_level String?    @db.VarChar(100)
+  field_of_study  String?    @db.VarChar(100)
+  graduation_year Int?
+  applicants      applicants @relation(fields: [applicant_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "educations_ibfk_1")
+
+  @@index([applicant_id], map: "idx_app_edu")
+}
+
+model experiences {
+  id                String     @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  applicant_id      String     @db.Char(36)
+  company_name      String     @db.VarChar(150)
+  company_address   String?    @db.VarChar(255)
+  position          String     @db.VarChar(150)
+  employment_status String?    @db.VarChar(50)
+  date_from         DateTime?  @db.Date
+  date_to           DateTime?  @db.Date
+  applicants        applicants @relation(fields: [applicant_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "experiences_ibfk_1")
+
+  @@index([applicant_id], map: "idx_app_exp")
+}
+
+model general_applicant_answers {
+  id                String            @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  applicant_id      String            @db.Char(36)
+  gaid              String            @db.Char(36)
+  answer            String?           @db.Text
+  applicants        applicants        @relation(fields: [applicant_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "general_applicant_answers_ibfk_1")
+  general_questions general_questions @relation(fields: [gaid], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "general_applicant_answers_ibfk_2")
+
+  @@index([gaid], map: "gaid")
+  @@index([applicant_id], map: "idx_app_ans")
+}
+
+model general_questions {
+  id                        String                      @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  question                  String                      @db.Text
+  general_applicant_answers general_applicant_answers[]
+}
+
+model positions {
+  id                  String                @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  position_name       String                @unique(map: "position_name") @db.VarChar(150)
+  department          String?               @db.VarChar(100)
+  applicant_positions applicant_positions[]
+}
+
+model skills {
+  id               String             @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  name             String             @unique(map: "name") @db.VarChar(100)
+  description      String?            @db.Text
+  applicant_skills applicant_skills[]
+}
+
+model vacancies {
+  id                  String                @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  vacancy_name        String                @db.VarChar(255)
+  status              vacancies_status?     @default(active)
+  created_at          DateTime?             @default(now()) @db.Timestamp(0)
+  applicant_vacancies applicant_vacancies[]
+}
+
+enum audit_logs_action_type {
+  INSERT
+  UPDATE
+  DELETE
+}
+
+enum vacancies_status {
+  active
+  closed
+}
+
+enum applicant_positions_priority {
+  FIRST  @map("1")
+  SECOND @map("2")
+  THIRD  @map("3")
+}
+
+enum applicants_gender {
+  Male
+  Female
+}
+
+enum applicants_application_status {
+  submitted
+  shortlisted
+  interview
+  talent_pool
+  rejected
+}
